@@ -16,6 +16,7 @@
 
 #include "FXOS8700Q.h"
 #include "mbed.h"
+#include <cstdio>
 
 
 I2C i2c(PTE25, PTE24);
@@ -38,11 +39,17 @@ int main(void) {
   mag.enable();
   printf("FXOS8700QAccelerometer Who Am I= %X\r\n", acc.whoAmI());
   printf("FXOS8700QMagnetometer Who Am I= %X\r\n", acc.whoAmI());
+  printf("\x1B[1J");
+  printf("\x1B[H");
+  printf("\x1B[?25l");
+  ThisThread::sleep_for(1s);
+  
   while (true) {
     // counts based results
     acc.getAxis(acc_raw);
     mag.getAxis(mag_raw);
-    printf("ACC: X=%06dd Y=%06dd Z=%06dd \t MAG: X=%06dd Y=%06dd Z=%06dd\r\n",
+    printf("ACC: X=%06dd Y=%06dd Z=%06dd \t MAG: X=%06dd Y=%06dd "
+           "Z=%06dd\x1B[K\r\n",
            acc_raw.x, acc_raw.y, acc_raw.z, mag_raw.x, mag_raw.y, mag_raw.z);
     acc.getX(raX);
     acc.getY(raY);
@@ -50,16 +57,18 @@ int main(void) {
     mag.getX(rmX);
     mag.getY(rmY);
     mag.getZ(rmZ);
-    printf("ACC: X=%06dd Y=%06dd Z=%06dd \t MAG: X=%06dd Y=%06dd Z=%06dd\r\n",
+    printf("ACC: X=%06dd Y=%06dd Z=%06dd \t MAG: X=%06dd Y=%06dd "
+           "Z=%06dd\x1B[K\r\n",
            raX, raY, raZ, rmX, rmY, rmZ);
-    printf("ACC: X=%06dd Y=%06dd Z=%06dd \t MAG: X=%06dd Y=%06dd Z=%06dd\r\n",
+    printf("ACC: X=%06dd Y=%06dd Z=%06dd \t MAG: X=%06dd Y=%06dd "
+           "Z=%06dd\x1B[K\r\n",
            acc.getX(tmp_int), acc.getY(tmp_int), acc.getZ(tmp_int),
            mag.getX(tmp_int), mag.getY(tmp_int), mag.getZ(tmp_int));
     // unit based results
     acc.getAxis(acc_data);
     mag.getAxis(mag_data);
     printf("ACC: X=%1.4ff Y=%1.4ff Z=%1.4ff \t MAG: X=%4.1ff Y=%4.1ff "
-           "Z=%4.1ff\r\n",
+           "Z=%4.1ff\x1B[K\r\n",
            acc_data.x, acc_data.y, acc_data.z, mag_data.x, mag_data.y,
            mag_data.z);
     acc.getX(faX);
@@ -69,13 +78,14 @@ int main(void) {
     mag.getY(fmY);
     mag.getZ(fmZ);
     printf("ACC: X=%1.4ff Y=%1.4ff Z=%1.4ff \t MAG: X=%4.1ff Y=%4.1ff "
-           "Z=%4.1ff\r\n",
+           "Z=%4.1ff\x1B[K\r\n",
            faX, faY, faZ, fmX, fmY, fmZ);
     printf("ACC: X=%1.4ff Y=%1.4ff Z=%1.4ff \t MAG: X=%4.1ff Y=%4.1ff "
-           "Z=%4.1ff\r\n",
+           "Z=%4.1ff\x1B[K\r\n",
            acc.getX(tmp_float), acc.getY(tmp_float), acc.getZ(tmp_float),
            mag.getX(tmp_float), mag.getY(tmp_float), mag.getZ(tmp_float));
     puts("");
-    ThisThread::sleep_for(1s);
+    printf("\x1B[H");
+    // ThisThread::sleep_for(1s);
   }
 }
