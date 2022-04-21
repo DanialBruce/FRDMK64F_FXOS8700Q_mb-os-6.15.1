@@ -16,66 +16,56 @@
 
 #include "FXOS8700Q.h"
 #include "mbed.h"
-
+#include <cmath>
+#include <cstdio>
+#include <limits>
 
 I2C i2c(PTE25, PTE24);
-// FXOS8700Q fxos(i2c, FXOS8700CQ_SLAVE_ADDR1);
-FXOS8700QAccelerometer
-    acc(i2c, FXOS8700CQ_SLAVE_ADDR1); // Configured for the FRDM-K64F with
-                                      // onboard sensors
+
+FXOS8700QAccelerometer acc(i2c, FXOS8700CQ_SLAVE_ADDR1); 
 FXOS8700QMagnetometer mag(i2c, FXOS8700CQ_SLAVE_ADDR1);
-// FXOS8700QAccelerometer acc(i2c, FXOS8700CQ_SLAVE_ADDR0);    // Configured for
-// use with the FRDM-MULTI shield FXOS8700QMagnetometer mag(i2c,
-// FXOS8700CQ_SLAVE_ADDR0);
+
+const float PI = 3.141593;
+motion_data_units_t acc_data;
+
+float filt_x, filt_y, filt_z, faX, faY, faZ, gn_aX, gn_aY, gn_aZ; //gn stands for "gravity neglected"
+
+float roll;
+float pitch;
 
 int main(void) {
-  motion_data_units_t acc_data, mag_data;
-  motion_data_counts_t acc_raw, mag_raw;
-  float faX, faY, faZ, fmX, fmY, fmZ, tmp_float;
-  int16_t raX, raY, raZ, rmX, rmY, rmZ, tmp_int;
 
   acc.enable();
   mag.enable();
-  printf("FXOS8700QAccelerometer Who Am I= %X\r\n", acc.whoAmI());
-  printf("FXOS8700QMagnetometer Who Am I= %X\r\n", acc.whoAmI());
+
+  ThisThread::sleep_for(1s);
+
   while (true) {
-    // counts based results
-    acc.getAxis(acc_raw);
-    mag.getAxis(mag_raw);
-    printf("ACC: X=%06dd Y=%06dd Z=%06dd \t MAG: X=%06dd Y=%06dd Z=%06dd\r\n",
-           acc_raw.x, acc_raw.y, acc_raw.z, mag_raw.x, mag_raw.y, mag_raw.z);
-    acc.getX(raX);
-    acc.getY(raY);
-    acc.getZ(raZ);
-    mag.getX(rmX);
-    mag.getY(rmY);
-    mag.getZ(rmZ);
-    printf("ACC: X=%06dd Y=%06dd Z=%06dd \t MAG: X=%06dd Y=%06dd Z=%06dd\r\n",
-           raX, raY, raZ, rmX, rmY, rmZ);
-    printf("ACC: X=%06dd Y=%06dd Z=%06dd \t MAG: X=%06dd Y=%06dd Z=%06dd\r\n",
-           acc.getX(tmp_int), acc.getY(tmp_int), acc.getZ(tmp_int),
-           mag.getX(tmp_int), mag.getY(tmp_int), mag.getZ(tmp_int));
+
     // unit based results
     acc.getAxis(acc_data);
-    mag.getAxis(mag_data);
-    printf("ACC: X=%1.4ff Y=%1.4ff Z=%1.4ff \t MAG: X=%4.1ff Y=%4.1ff "
-           "Z=%4.1ff\r\n",
-           acc_data.x, acc_data.y, acc_data.z, mag_data.x, mag_data.y,
-           mag_data.z);
     acc.getX(faX);
     acc.getY(faY);
     acc.getZ(faZ);
-    mag.getX(fmX);
-    mag.getY(fmY);
-    mag.getZ(fmZ);
-    printf("ACC: X=%1.4ff Y=%1.4ff Z=%1.4ff \t MAG: X=%4.1ff Y=%4.1ff "
-           "Z=%4.1ff\r\n",
-           faX, faY, faZ, fmX, fmY, fmZ);
-    printf("ACC: X=%1.4ff Y=%1.4ff Z=%1.4ff \t MAG: X=%4.1ff Y=%4.1ff "
-           "Z=%4.1ff\r\n",
-           acc.getX(tmp_float), acc.getY(tmp_float), acc.getZ(tmp_float),
-           mag.getX(tmp_float), mag.getY(tmp_float), mag.getZ(tmp_float));
-    puts("");
-    ThisThread::sleep_for(1s);
+
+    // Calculate Roll and Pitch (rotation around X-axis, rotation around Y-axis)
+    pitch = atan(-1 * acc_data.y / sqrt(pow(acc_data.x, 2) + pow(acc_data.z, 2))) * 180 / PI;
+    roll = atan(-1 * acc_data.x / sqrt(pow(acc_data.y, 2) + pow(acc_data.z, 2))) * 180 / PI;
+
+    // neglecting gravity
+    gn_aX = acc_data.x + sin(roll * PI / 180);
+    gn_aY = acc_data.y + sin(pitch * PI / 180);
+
+    //simple low pass filter
+    filt_x = 0.85 * filt_x + 0.15 * gn_aX;
+    filt_y = 0.85 * filt_y + 0.15 * gn_aY;
+    filt_z = 0.85 * filt_z + 0.15 * acc_data.z;
+
+
+    printf("$%.3f %.3f %.3f %.3f %.3f %.3f %.3f %.3f %.3f %.3f;",
+           filt_x, filt_y, filt_z, gn_aX, gn_aY, acc_data.x, acc_data.y, acc_data.z, roll, pitch);
+
+
+    ThisThread::sleep_for(10ms);
   }
 }
